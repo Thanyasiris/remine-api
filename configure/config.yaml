@@ -1,0 +1,13 @@
+mssql :
+    databaseType : "mssql"
+    server       : "kmitlcs.database.windows.net"
+    port         : 1433
+    user         : "kmitlcs"
+    password     : "p@ssw0rd"
+    database     : "kmitlcs"
+
+expirationTime : 
+    expHour : 12
+
+notiMail :
+    enableSendMail : false

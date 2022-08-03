@@ -1,34 +1,47 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
+	"remine-api/database/mssql"
 
-	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 )
 
-// album represents data about a record album.
-type album struct {
-	ID     string  `json:"id"`
-	Title  string  `json:"title"`
-	Artist string  `json:"artist"`
-	Price  float64 `json:"price"`
-}
-
-// albums slice to seed record album data.
-var albums = []album{
-	{ID: "1", Title: "Blue Train", Artist: "John Coltrane", Price: 56.99},
-	{ID: "2", Title: "Jeru", Artist: "Gerry Mulligan", Price: 17.99},
-	{ID: "3", Title: "Sarah Vaughan and Clifford Brown", Artist: "Sarah Vaughan", Price: 39.99},
-}
-
-// getAlbums responds with the list of all albums as JSON.
-func getAlbums(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, albums)
-}
-
 func main() {
-	router := gin.Default()
-	router.GET("/albums", getAlbums)
+	//connect database
+	configPath := flag.String("config", "configure", "set configs path, default as: 'configure'")
+	mssql.ConnectDB(*configPath)
 
-	router.Run("localhost:8080")
+	//start http route
+	portApp := flag.String("portApp", "8080", "portApp number")
+
+	flag.Parse()
+	log.Infof("Run on port : %+v", *portApp)
+
+	//start routes
+	r := handler.Routes{}
+	handlerRoute := r.InitTransactionRoute()
+	AppServer := &http.Server{
+		Addr:    fmt.Sprint(":", *portApp),
+		Handler: handlerRoute,
+	}
+
+	//start http app server
+	go func() {
+		if err := AppServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Panicf("Transaction listen : %s\n", err)
+		} else if err != nil {
+			log.Panicf("Transaction listen error: %s\n", err)
+		}
+		log.Infof("Transaction listen at port: %s", *portApp)
+	}()
+
+	//wait signals
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt)
+	<-signals //wait for SIGINT
 }
